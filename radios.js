@@ -141,7 +141,7 @@ function initialize(wid) {
                                     s_name.style.maxWidth = "calc(100% - 60px)";
                                     s_name.style.height = "100%";
                                     s_name.style.padding = "5px";
-                                    s_name.style.fontSize = "initial";
+                                    s_name.style.fontSize = "70%";
                                     s_name.style.alignItems = "center";
                                     s_name.style.overflow = "hidden";
                                     s_name.innerText = md.metadata;
