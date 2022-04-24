@@ -266,7 +266,7 @@ function initialize(wid) {
 
                                 var new_song = document.createElement("span");
                                 new_song.style.fontWeight = "initial";
-                                new_song.style.fontSize = "initial";
+                                new_song.style.fontSize = "70%";
                                 new_song.innerText = data.radio_metadata.metadata;
 
                                 r_name[0].appendChild(radio_name);
@@ -372,7 +372,7 @@ function change_dow(day, widget_id, placeholder_image="https://mytuner-radio.com
             s_name.style.maxWidth = "calc(100% - 60px)";
             s_name.style.height = "100%";
             s_name.style.padding = "5px";
-            s_name.style.fontSize = "initial";
+            s_name.style.fontSize = "70%";
             s_name.style.alignItems = "center";
             s_name.style.overflow = "hidden";
             s_name.innerText = (music.artist != "" ? music.artist + " - " : "") + music.title;
