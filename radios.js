@@ -337,7 +337,7 @@ function change_dow(day, widget_id, placeholder_image="https://mytuner-radio.com
                 song.style.borderBottom = song_history.dataset.border + "px solid " + song_history.dataset.bordercolor;
             }
             var s_time = document.createElement("span");
-            s_time.style.display = "inline-flex";
+            s_time.style.display = "none";
             s_time.style.alignItems = "center";
             s_time.style.padding = "10px";
             s_time.style.width = "55px";
