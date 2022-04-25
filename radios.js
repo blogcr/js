@@ -113,7 +113,7 @@ function initialize(wid) {
                                     song.style.position = "relative";
                                     song.style.borderBottom = song_history.dataset.border + "px solid " + song_history.dataset.bordercolor;
                                     var s_time = document.createElement("span");
-                                    s_time.style.display = "none";
+                                    s_time.style.display = "inline-flex";
                                     s_time.style.alignItems = "center";
                                     s_time.style.padding = "10px";
                                     s_time.style.width = "55px";
@@ -141,7 +141,7 @@ function initialize(wid) {
                                     s_name.style.maxWidth = "calc(100% - 60px)";
                                     s_name.style.height = "100%";
                                     s_name.style.padding = "5px";
-                                    s_name.style.fontSize = "70%";
+                                    s_name.style.fontSize = "initial";
                                     s_name.style.alignItems = "center";
                                     s_name.style.overflow = "hidden";
                                     s_name.innerText = md.metadata;
@@ -266,7 +266,7 @@ function initialize(wid) {
 
                                 var new_song = document.createElement("span");
                                 new_song.style.fontWeight = "initial";
-                                new_song.style.fontSize = "70%";
+                                new_song.style.fontSize = "initial";
                                 new_song.innerText = data.radio_metadata.metadata;
 
                                 r_name[0].appendChild(radio_name);
@@ -337,7 +337,7 @@ function change_dow(day, widget_id, placeholder_image="https://mytuner-radio.com
                 song.style.borderBottom = song_history.dataset.border + "px solid " + song_history.dataset.bordercolor;
             }
             var s_time = document.createElement("span");
-            s_time.style.display = "none";
+            s_time.style.display = "inline-flex";
             s_time.style.alignItems = "center";
             s_time.style.padding = "10px";
             s_time.style.width = "55px";
@@ -372,7 +372,7 @@ function change_dow(day, widget_id, placeholder_image="https://mytuner-radio.com
             s_name.style.maxWidth = "calc(100% - 60px)";
             s_name.style.height = "100%";
             s_name.style.padding = "5px";
-            s_name.style.fontSize = "70%";
+            s_name.style.fontSize = "initial";
             s_name.style.alignItems = "center";
             s_name.style.overflow = "hidden";
             s_name.innerText = (music.artist != "" ? music.artist + " - " : "") + music.title;
