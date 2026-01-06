@@ -1,87 +1,73 @@
 document.addEventListener("DOMContentLoaded", function() {
-    
-    // FILTRO: Só pega links que tenham data-fancybox
-    var links = document.querySelectorAll('a[data-fancybox]');
+    var elementos = document.querySelectorAll('a[data-fancybox], .post-body img');
+    var overlay = document.getElementById('lightbox-overlay');
+    var conteudoBox = document.getElementById('lightbox-conteudo');
+    var legendaBox = document.getElementById('lightbox-legenda');
 
-    links.forEach(function(el) {
+    elementos.forEach(function(el) {
+        if (el.tagName === 'IMG' && el.width > 100) { el.style.cursor = 'zoom-in'; }
+
         el.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            var url = el.href || el.getAttribute('data-src');
-            var legenda = el.getAttribute('data-caption') || el.title || "";
-            var tipo = "iframe"; // Padrão se não for nada específico
+            var url = "";
+            var tipo = "";
+            var legendaTexto = "";
 
-            // --- DETECÇÃO SIMPLES ---
-            if (url.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) {
+            if (el.tagName === 'A' && el.hasAttribute('data-fancybox')) {
+                e.preventDefault();
+                url = el.getAttribute('data-src') || el.href;
+                legendaTexto = el.getAttribute('data-caption') || el.title || el.innerText || "";
+                
+                var tipoForcado = el.getAttribute('data-type');
+
+                if (tipoForcado === 'iframe' || (!url.includes('youtube') && !url.match(/\.(jpeg|jpg|gif|png|webp)$/i))) {
+                    tipo = 'iframe';
+                    if (url.includes('wikipedia.org') && !url.includes('.m.wikipedia.org')) {
+                        url = url.replace('wikipedia.org', 'm.wikipedia.org');
+                    }
+                } 
+                else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    tipo = 'video';
+                    var videoId = url.split('v=')[1] || url.split('/').pop();
+                    var ampersandPosition = videoId.indexOf('&');
+                    if(ampersandPosition != -1) { videoId = videoId.substring(0, ampersandPosition); }
+                    url = "https://www.youtube.com/embed/" + videoId + "?autoplay=1";
+                } 
+                else {
+                    tipo = 'imagem';
+                }
+            } 
+            else if (el.tagName === 'IMG' && el.width > 100) {
+                e.preventDefault();
                 tipo = 'imagem';
-            }
-            else if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                tipo = 'video';
-            }
-            else if (url.includes('wikipedia.org')) {
-                tipo = 'wiki';
-            }
+                if (el.parentElement.tagName === 'A') { url = el.parentElement.href; } 
+                else { url = el.src; }
+                legendaTexto = el.alt;
+            } else { return; }
 
-            abrirLightbox(tipo, url, legenda);
+            overlay.classList.remove('lightbox-oculto');
+            overlay.classList.add('lightbox-visivel');
+            
+            if (tipo === 'video') {
+                conteudoBox.innerHTML = '<div class="video-wrapper"><iframe src="' + url + '" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>';
+                conteudoBox.className = 'modo-video';
+            } else if (tipo === 'iframe') {
+                conteudoBox.innerHTML = '<iframe src="' + url + '" class="iframe-site" frameborder="0"></iframe>';
+                conteudoBox.className = 'modo-iframe';
+            } else {
+                conteudoBox.innerHTML = '<img src="' + url + '" class="img-zoom">';
+                conteudoBox.className = 'modo-imagem';
+            }
+            legendaBox.textContent = legendaTexto;
         });
     });
 });
 
-function abrirLightbox(tipo, url, legenda) {
-    var overlay = document.getElementById('lightbox-overlay');
-    var conteudo = document.getElementById('lightbox-conteudo');
-    var boxLegenda = document.getElementById('lightbox-legenda');
-    
-    // Limpa tudo para garantir que não tenha "lixo" de classes antigas
-    overlay.className = 'lightbox-visivel'; // Remove oculto e põe visível
-    conteudo.className = ''; // Remove classes de modo (video/wiki)
-    conteudo.innerHTML = '';
-    boxLegenda.textContent = '';
-
-    // --- MODO IMAGEM (O Básico que funciona) ---
-    if (tipo === 'imagem') {
-        // Não coloca div em volta, nem define largura. Só a imagem pura.
-        var img = document.createElement('img');
-        img.src = url;
-        img.className = 'img-zoom'; // Classe para o CSS limitar o tamanho máximo
-        conteudo.appendChild(img);
-        
-        if (legenda) boxLegenda.textContent = legenda;
-    }
-    
-    // --- MODO VÍDEO ---
-    else if (tipo === 'video') {
-        conteudo.className = 'modo-video'; // Ativa o fundo preto e tamanho fixo
-        var videoId = url.split('v=')[1] || url.split('/').pop();
-        if(videoId.indexOf('&') > -1) videoId = videoId.split('&')[0];
-        conteudo.innerHTML = '<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=1" frameborder="0" allowfullscreen></iframe></div>';
-    }
-    
-    // --- MODO WIKI ---
-    else if (tipo === 'wiki') {
-        conteudo.className = 'modo-wiki'; // Ativa o fundo branco e tamanho fixo
-        conteudo.innerHTML = '<div style="text-align:center; padding:20px;">Carregando...</div>';
-        
-        var slug = url.split('/').pop().split('#')[0];
-        fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/' + slug)
-        .then(res => res.json())
-        .then(data => {
-            var imgHtml = (data.thumbnail) ? '<img src="'+data.thumbnail.source+'" style="max-height:200px; display:block; margin:0 auto 15px auto">' : '';
-            var texto = data.extract_html || data.extract || "Sem resumo.";
-            conteudo.innerHTML = imgHtml + '<h2>'+data.title+'</h2><div>'+texto+'</div><br><a href="'+url+'" target="_blank" style="font-weight:bold;">Ler na Wikipédia &rarr;</a>';
-        });
-    }
-    // --- IFRAME GENÉRICO ---
-    else {
-        conteudo.className = 'modo-iframe';
-        conteudo.innerHTML = '<iframe src="' + url + '" style="width:100%; height:100%" frameborder="0"></iframe>';
+function fecharLightbox(e) {
+    if (e.target.id === 'lightbox-overlay' || e.target.classList.contains('lightbox-fechar')) {
+        var overlay = document.getElementById('lightbox-overlay');
+        var conteudoBox = document.getElementById('lightbox-conteudo');
+        overlay.classList.remove('lightbox-visivel');
+        overlay.classList.add('lightbox-oculto');
+        setTimeout(function(){ conteudoBox.innerHTML = ''; }, 300);
     }
 }
-
-// Fechar
-window.fecharLightbox = function(e) {
-    if (e.target.id === 'lightbox-overlay' || e.target.className === 'lightbox-fechar') {
-        document.getElementById('lightbox-overlay').className = 'lightbox-oculto';
-        setTimeout(function(){ document.getElementById('lightbox-conteudo').innerHTML = ""; }, 300);
-    }
-};
