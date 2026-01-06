@@ -1,115 +1,130 @@
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. SELEÇÃO INTELIGENTE
-    // Seleciona links manuais (data-fancybox)
-    var linksManuais = document.querySelectorAll('a[data-fancybox]');
     
-    // Seleciona links automáticos de imagens (Blogger padrão)
-    // Procura qualquer <a> dentro do post que aponte para uma imagem
-    var linksImagensBlogger = document.querySelectorAll('.post-body a[href$=".jpg"], .post-body a[href$=".jpeg"], .post-body a[href$=".png"], .post-body a[href$=".gif"], .post-body a[href$=".webp"], .post-body a[href$=".bmp"]');
-
-    // Junta tudo numa lista só
-    var elementos = [...linksManuais, ...linksImagensBlogger];
-
+    // 1. SELEÇÃO ABRANGENTE (Imagens do Blogger + Links Manuais)
+    // Procura qualquer link que termine em imagem OU tenha data-fancybox
+    // O seletor foi simplificado para garantir que pegue tudo
+    var seletores = [
+        'a[data-fancybox]',
+        '.post-body a[href$=".jpg"]', 
+        '.post-body a[href$=".jpeg"]', 
+        '.post-body a[href$=".png"]', 
+        '.post-body a[href$=".gif"]', 
+        '.post-body a[href$=".webp"]'
+    ];
+    
+    var elementos = document.querySelectorAll(seletores.join(', '));
     var overlay = document.getElementById('lightbox-overlay');
     var conteudoBox = document.getElementById('lightbox-conteudo');
     var legendaBox = document.getElementById('lightbox-legenda');
 
     elementos.forEach(function(el) {
         
-        // Adiciona cursor de lupa se for imagem
-        // (Verifica se é um link de imagem ou se contém uma imagem dentro)
-        if (el.href && el.href.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+        // Adiciona cursor de lupa se for link de imagem
+        if (el.href && el.href.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) {
              el.style.cursor = 'zoom-in';
         }
 
+        // --- O SEGREDO ESTÁ AQUI: O "true" NO FINAL ---
+        // Isso ativa o modo de Captura, garantindo que este script rode antes do antigo
         el.addEventListener('click', function(e) {
-            var url = el.href || el.getAttribute('data-src');
             
-            // Se o link não tiver URL, para por aqui
+            var url = el.href || el.getAttribute('data-src');
             if (!url) return;
 
+            // Variáveis de decisão
             var tipo = "";
             var legendaTexto = el.getAttribute('data-caption') || el.title || "";
             
-            // Se não achou legenda no link, tenta achar na imagem dentro dele (padrão Blogger)
+            // Tenta pegar legenda da imagem interna (padrão do Blogger)
             if (!legendaTexto) {
                 var imgFilha = el.querySelector('img');
                 if (imgFilha) legendaTexto = imgFilha.alt;
             }
 
-            // --- CLASSIFICAÇÃO DO CONTEÚDO ---
-            
-            // 1. YOUTUBE
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                e.preventDefault();
+            // --- DETECÇÃO DO TIPO ---
+
+            // 1. WIKIPÉDIA (Prioridade Alta)
+            if (url.includes('wikipedia.org')) {
+                tipo = 'wiki-api';
+            }
+            // 2. YOUTUBE
+            else if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 tipo = 'video';
                 var videoId = url.split('v=')[1] || url.split('/').pop();
                 if(videoId.indexOf('&') != -1) { videoId = videoId.substring(0, videoId.indexOf('&')); }
                 url = "https://www.youtube.com/embed/" + videoId + "?autoplay=1";
-            } 
-            
-            // 2. WIKIPÉDIA (API) - Sua nova funcionalidade
-            else if (url.includes('wikipedia.org')) {
-                e.preventDefault();
-                tipo = 'wiki-api';
             }
-            
-            // 3. IMAGEM (Detecta pela extensão do arquivo no link)
+            // 3. IMAGEM (Detecção automática pela extensão)
             else if (url.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) {
-                e.preventDefault();
                 tipo = 'imagem';
             }
-            
-            // 4. IFRAME GENÉRICO (Só abre se tiver data-fancybox explícito)
+            // 4. IFRAME MANUAL (Só se tiver data-fancybox e não for os de cima)
             else if (el.hasAttribute('data-fancybox')) {
-                e.preventDefault();
                 tipo = 'iframe';
             }
-            
-            // Se for um link comum (ex: link para o Google) sem data-fancybox,
-            // o script ignora e deixa abrir normal.
 
+            // Se encontrou um tipo válido, ABRE O LIGHTBOX e MATA O ANTIGO
             if (tipo !== "") {
-                // ABRIR LIGHTBOX
+                e.preventDefault();
+                e.stopPropagation(); // Impede que o evento suba
+                e.stopImmediatePropagation(); // MATA o script antigo do Fancybox na hora!
+
                 overlay.classList.remove('lightbox-oculto');
                 overlay.classList.add('lightbox-visivel');
-                legendaBox.textContent = "";
+                legendaBox.textContent = ""; // Limpa anterior
 
-                // --- RENDERIZAÇÃO ---
-                
-                if (tipo === 'video') {
-                    conteudoBox.innerHTML = '<div class="video-wrapper"><iframe src="' + url + '" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>';
-                    conteudoBox.className = 'modo-video';
-                    legendaBox.textContent = legendaTexto;
-                } 
-                
-                else if (tipo === 'wiki-api') {
-                    conteudoBox.innerHTML = '<div style="color:#333; padding:2rem; background:#fff; border-radius:8px;">Consultando a Enciclopédia...</div>';
+                // --- INJEÇÃO DE CONTEÚDO ---
+
+                if (tipo === 'wiki-api') {
+                    conteudoBox.innerHTML = '<div style="color:#333; padding:2rem; background:#fff; border-radius:8px; text-align:center;">Consultando a Enciclopédia...</div>';
                     conteudoBox.className = 'modo-wiki';
                     
-                    var partes = url.split('/wiki/');
-                    var slug = partes[1] || "";
+                    // Limpeza da URL para pegar o slug correto
+                    var slug = "";
+                    try {
+                        // Pega a última parte da URL (ex: John_Lennon)
+                        var urlObj = new URL(url);
+                        var pathParts = urlObj.pathname.split('/');
+                        slug = pathParts[pathParts.length - 1]; 
+                    } catch(err) {
+                        slug = url.split('/').pop();
+                    }
                     if(slug.indexOf('#') > -1) slug = slug.split('#')[0];
 
+                    // Chama a API
                     fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/' + slug)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error('Erro na API');
+                        return response.json();
+                    })
                     .then(data => {
                         var imagemHTML = "";
                         if (data.thumbnail && data.thumbnail.source) {
-                            imagemHTML = '<img src="' + data.thumbnail.source + '" class="wiki-imagem-topo" style="display:block;">';
+                            imagemHTML = '<img src="' + data.thumbnail.source + '" class="wiki-imagem-topo" style="display:block; margin: 0 auto 1rem auto; max-height:200px;">';
                         }
+                        var extract = data.extract_html || data.extract || "Resumo indisponível.";
+                        
                         var htmlFinal = `
                             ${imagemHTML}
-                            <h2>${data.title}</h2>
-                            <div class="wiki-resumo">${data.extract_html || data.extract}</div>
-                            <a href="${url}" target="_blank" class="btn-ler-wiki">Ler artigo completo na Wikipédia &#8594;</a>
+                            <h2 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">${data.title}</h2>
+                            <div class="wiki-resumo" style="text-align:left; line-height:1.6; font-family:serif;">${extract}</div>
+                            <div style="margin-top:20px; text-align:center;">
+                                <a href="${url}" target="_blank" class="btn-ler-wiki" style="display:inline-block; background:#f0f0f0; color:#333; padding:10px 20px; text-decoration:none; border-radius:4px; font-weight:bold;">Ler artigo completo na Wikipédia &#8594;</a>
+                            </div>
                         `;
                         conteudoBox.innerHTML = htmlFinal;
                     })
                     .catch(err => {
-                        conteudoBox.innerHTML = '<div style="padding:2rem; background:#fff;">Não foi possível carregar o resumo.<br><br><a href="'+url+'" target="_blank" class="btn-ler-wiki">Abrir Página</a></div>';
+                        // Fallback elegante se a API falhar
+                        conteudoBox.innerHTML = '<div style="padding:2rem; background:#fff; text-align:center;"><p>Não foi possível carregar o resumo automático.</p><a href="'+url+'" target="_blank" style="text-decoration:underline;">Clique aqui para abrir a página na Wikipédia</a></div>';
                     });
                 }
+                
+                else if (tipo === 'video') {
+                    conteudoBox.innerHTML = '<div class="video-wrapper"><iframe src="' + url + '" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>';
+                    conteudoBox.className = 'modo-video';
+                    legendaBox.textContent = legendaTexto;
+                } 
                 
                 else if (tipo === 'iframe') {
                     conteudoBox.innerHTML = '<iframe src="' + url + '" class="iframe-site" frameborder="0"></iframe>';
@@ -122,6 +137,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     legendaBox.textContent = legendaTexto;
                 }
             }
-        });
+
+        }, true); // <--- O "true" aqui garante a prioridade sobre o script antigo
     });
 });
