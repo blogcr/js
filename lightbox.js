@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function() {
     
-    // Seleciona APENAS links que tenham data-fancybox
+    // FILTRO: Só pega links que tenham data-fancybox
     var links = document.querySelectorAll('a[data-fancybox]');
 
     links.forEach(function(el) {
@@ -9,24 +9,19 @@ document.addEventListener("DOMContentLoaded", function() {
             
             var url = el.href || el.getAttribute('data-src');
             var legenda = el.getAttribute('data-caption') || el.title || "";
-            var tipo = "iframe"; // Padrão
+            var tipo = "iframe"; // Padrão se não for nada específico
 
-            // --- DETECÇÃO ---
-
-            // A. É IMAGEM? (Verifica extensão)
+            // --- DETECÇÃO SIMPLES ---
             if (url.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) {
                 tipo = 'imagem';
             }
-            // B. É YOUTUBE?
             else if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 tipo = 'video';
             }
-            // C. É WIKIPÉDIA?
             else if (url.includes('wikipedia.org')) {
                 tipo = 'wiki';
             }
 
-            // --- ABRIR LIGHTBOX ---
             abrirLightbox(tipo, url, legenda);
         });
     });
@@ -37,54 +32,56 @@ function abrirLightbox(tipo, url, legenda) {
     var conteudo = document.getElementById('lightbox-conteudo');
     var boxLegenda = document.getElementById('lightbox-legenda');
     
-    if (!overlay) return;
+    // Limpa tudo para garantir que não tenha "lixo" de classes antigas
+    overlay.className = 'lightbox-visivel'; // Remove oculto e põe visível
+    conteudo.className = ''; // Remove classes de modo (video/wiki)
+    conteudo.innerHTML = '';
+    boxLegenda.textContent = '';
 
-    overlay.classList.remove('lightbox-oculto');
-    overlay.classList.add('lightbox-visivel');
-    boxLegenda.textContent = "";
-    
-    // Limpa classes antigas para não herdar tamanho errado
-    conteudo.className = ''; 
-
+    // --- MODO IMAGEM (O Básico que funciona) ---
     if (tipo === 'imagem') {
-        conteudo.classList.add('modo-imagem');
-        // A imagem é inserida sem div em volta para não travar o tamanho
-        conteudo.innerHTML = '<img src="' + url + '" class="img-zoom">';
-        if(legenda) boxLegenda.textContent = legenda;
+        // Não coloca div em volta, nem define largura. Só a imagem pura.
+        var img = document.createElement('img');
+        img.src = url;
+        img.className = 'img-zoom'; // Classe para o CSS limitar o tamanho máximo
+        conteudo.appendChild(img);
+        
+        if (legenda) boxLegenda.textContent = legenda;
     }
+    
+    // --- MODO VÍDEO ---
     else if (tipo === 'video') {
-        conteudo.classList.add('modo-video');
+        conteudo.className = 'modo-video'; // Ativa o fundo preto e tamanho fixo
         var videoId = url.split('v=')[1] || url.split('/').pop();
         if(videoId.indexOf('&') > -1) videoId = videoId.split('&')[0];
         conteudo.innerHTML = '<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=1" frameborder="0" allowfullscreen></iframe></div>';
     }
+    
+    // --- MODO WIKI ---
     else if (tipo === 'wiki') {
-        conteudo.classList.add('modo-wiki');
-        conteudo.innerHTML = '<div style="padding:20px; text-align:center">Carregando...</div>';
+        conteudo.className = 'modo-wiki'; // Ativa o fundo branco e tamanho fixo
+        conteudo.innerHTML = '<div style="text-align:center; padding:20px;">Carregando...</div>';
         
-        var slug = url.split('/').pop();
-        if(slug.includes('#')) slug = slug.split('#')[0];
-
+        var slug = url.split('/').pop().split('#')[0];
         fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/' + slug)
         .then(res => res.json())
         .then(data => {
-            var img = (data.thumbnail) ? '<img src="'+data.thumbnail.source+'" class="wiki-img">' : '';
-            var txt = data.extract_html || data.extract || "Sem resumo.";
-            conteudo.innerHTML = img + '<h2>'+data.title+'</h2><div>'+txt+'</div><br><a href="'+url+'" target="_blank" class="btn-wiki">Ler Mais &rarr;</a>';
+            var imgHtml = (data.thumbnail) ? '<img src="'+data.thumbnail.source+'" style="max-height:200px; display:block; margin:0 auto 15px auto">' : '';
+            var texto = data.extract_html || data.extract || "Sem resumo.";
+            conteudo.innerHTML = imgHtml + '<h2>'+data.title+'</h2><div>'+texto+'</div><br><a href="'+url+'" target="_blank" style="font-weight:bold;">Ler na Wikipédia &rarr;</a>';
         });
     }
+    // --- IFRAME GENÉRICO ---
     else {
-        conteudo.classList.add('modo-iframe');
+        conteudo.className = 'modo-iframe';
         conteudo.innerHTML = '<iframe src="' + url + '" style="width:100%; height:100%" frameborder="0"></iframe>';
     }
 }
 
+// Fechar
 window.fecharLightbox = function(e) {
     if (e.target.id === 'lightbox-overlay' || e.target.className === 'lightbox-fechar') {
-        var overlay = document.getElementById('lightbox-overlay');
-        var conteudo = document.getElementById('lightbox-conteudo');
-        overlay.classList.remove('lightbox-visivel');
-        overlay.classList.add('lightbox-oculto');
-        setTimeout(function(){ conteudo.innerHTML = ""; }, 300);
+        document.getElementById('lightbox-overlay').className = 'lightbox-oculto';
+        setTimeout(function(){ document.getElementById('lightbox-conteudo').innerHTML = ""; }, 300);
     }
 };
