@@ -1,3 +1,5 @@
+/* LIGHTBOX V6: SEM LEGENDA ALT AUTOMÁTICA */
+
 document.addEventListener("DOMContentLoaded", function() {
     var elementos = document.querySelectorAll('a[data-fancybox], .post-body img');
     var overlay = document.getElementById('lightbox-overlay');
@@ -16,7 +18,10 @@ document.addEventListener("DOMContentLoaded", function() {
             if (el.tagName === 'A' && el.hasAttribute('data-fancybox')) {
                 e.preventDefault();
                 url = el.getAttribute('data-src') || el.href;
-                legendaTexto = el.getAttribute('data-caption') || el.title || el.innerText || "";
+                
+                // MUDANÇA AQUI: Removemos 'el.innerText' para evitar pegar "Clique aqui" como legenda
+                // Só pega se tiver data-caption ou title
+                legendaTexto = el.getAttribute('data-caption') || el.title || "";
                 
                 var tipoForcado = el.getAttribute('data-type');
 
@@ -32,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 else { tipo = 'iframe'; }
             } 
             
-            // --- CASO 2: Imagens Soltas (Proteção contra Links de Navegação) ---
+            // --- CASO 2: Imagens Soltas (Proteção de Link) ---
             else if (el.tagName === 'IMG' && el.width > 100) {
                 var linkPai = el.closest('a');
                 if (linkPai) {
@@ -44,10 +49,17 @@ document.addEventListener("DOMContentLoaded", function() {
                                   linkPai.hasAttribute('data-fancybox');
                     if (!ehMidia) { return; } 
                     url = linkDestino;
-                } else { url = el.src; }
+                    
+                    // MUDANÇA AQUI: Tenta pegar o title do link pai se existir
+                    legendaTexto = linkPai.getAttribute('data-caption') || linkPai.title || "";
+                } else {
+                    url = el.src;
+                    // MUDANÇA AQUI: Se for só imagem, tentamos pegar o 'title' da imagem
+                    // Se só tiver 'alt', a legenda fica vazia.
+                    legendaTexto = el.title || ""; 
+                }
                 e.preventDefault();
                 tipo = 'imagem';
-                legendaTexto = el.alt;
             } else { return; }
 
             // --- ABRIR ---
@@ -62,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 conteudoBox.className = 'modo-video';
                 legendaBox.textContent = legendaTexto;
             }
-            // WIKIPÉDIA (Resumo API)
+            // WIKIPÉDIA
             else if (tipo === 'wiki') { 
                 conteudoBox.className = 'modo-wiki';
                 conteudoBox.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Consultando Enciclopédia...</div>';
@@ -76,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 })
                 .catch(err => { conteudoBox.innerHTML = '<p>Erro ao carregar resumo.</p><a href="'+url+'" target="_blank" class="btn-wiki">Abrir página</a>'; });
             }
-            // WIKCIONÁRIO (Parser HTML Limpo)
+            // WIKCIONÁRIO
             else if (tipo === 'dicio') { 
                 conteudoBox.className = 'modo-wiki'; 
                 conteudoBox.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Consultando Dicionário...</div>';
