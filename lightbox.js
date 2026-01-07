@@ -1,5 +1,3 @@
-/* LIGHTBOX V5: WIKCIONÁRIO LIMPO (HTML PARSER) */
-
 document.addEventListener("DOMContentLoaded", function() {
     var elementos = document.querySelectorAll('a[data-fancybox], .post-body img');
     var overlay = document.getElementById('lightbox-overlay');
