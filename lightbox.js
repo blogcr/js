@@ -1,4 +1,4 @@
-/* LIGHTBOX V4: BLINDADO + WIKI + GLOSSÁRIO (CORRIGIDO) */
+/* LIGHTBOX V5: WIKCIONÁRIO LIMPO (HTML PARSER) */
 
 document.addEventListener("DOMContentLoaded", function() {
     var elementos = document.querySelectorAll('a[data-fancybox], .post-body img');
@@ -34,23 +34,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 else { tipo = 'iframe'; }
             } 
             
-            // --- CASO 2: Imagens Soltas (Proteção de Link) ---
+            // --- CASO 2: Imagens Soltas ---
             else if (el.tagName === 'IMG' && el.width > 100) {
                 var linkPai = el.closest('a');
                 if (linkPai) {
                     var linkDestino = linkPai.href;
-                    // Verifica se o link é mídia ou navegação
                     var ehMidia = linkDestino.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) || 
                                   linkDestino.includes('youtube') || 
                                   linkDestino.includes('wikipedia') || 
                                   linkDestino.includes('wiktionary') ||
                                   linkPai.hasAttribute('data-fancybox');
-                    
-                    if (!ehMidia) { return; } // É navegação, deixa passar
+                    if (!ehMidia) { return; } 
                     url = linkDestino;
-                } else {
-                    url = el.src;
-                }
+                } else { url = el.src; }
                 e.preventDefault();
                 tipo = 'imagem';
                 legendaTexto = el.alt;
@@ -69,10 +65,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 legendaBox.textContent = legendaTexto;
             }
             
-            // WIKIPÉDIA
+            // WIKIPÉDIA (Resumo)
             else if (tipo === 'wiki') { 
                 conteudoBox.className = 'modo-wiki';
-                conteudoBox.innerHTML = '<div style="text-align:center; padding:20px;">Consultando Enciclopédia...</div>';
+                conteudoBox.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Consultando Enciclopédia...</div>';
                 var slug = url.split('/').pop().split('#')[0];
                 fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/' + slug)
                 .then(res => res.json())
@@ -84,26 +80,40 @@ document.addEventListener("DOMContentLoaded", function() {
                 .catch(err => { conteudoBox.innerHTML = '<p>Erro ao carregar resumo.</p><a href="'+url+'" target="_blank" class="btn-wiki">Abrir página</a>'; });
             }
 
-            // WIKCIONÁRIO (CORRIGIDO: Busca mais texto)
+            // WIKCIONÁRIO (MODO "CIRURGIÃO" - LIMPEZA TOTAL)
             else if (tipo === 'dicio') { 
                 conteudoBox.className = 'modo-wiki'; 
-                conteudoBox.innerHTML = '<div style="text-align:center; padding:20px;">Consultando Dicionário...</div>';
-                var termo = decodeURIComponent(url.split('/').pop().split('#')[0]).replace(/_/g, ' ');
+                conteudoBox.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Consultando Dicionário...</div>';
                 
-                // MUDANÇA AQUI: exchars=1000 em vez de exintro
-                fetch('https://pt.wiktionary.org/w/api.php?action=query&format=json&prop=extracts&explaintext&exchars=1000&origin=*&titles=' + termo)
+                var termo = decodeURIComponent(url.split('/').pop().split('#')[0]).replace(/_/g, ' ');
+
+                // Usa 'action=parse' para pegar o HTML estruturado
+                fetch('https://pt.wiktionary.org/w/api.php?action=parse&format=json&prop=text&mobileformat=1&origin=*&page=' + termo)
                 .then(res => res.json())
                 .then(data => {
-                    var pages = data.query.pages;
-                    var pageId = Object.keys(pages)[0];
-                    var extract = pages[pageId].extract;
+                    if (!data.parse || !data.parse.text) {
+                         conteudoBox.innerHTML = '<h2>'+termo+'</h2><p>Definição não encontrada.</p><a href="'+url+'" target="_blank" class="btn-wiki">Ver no site &rarr;</a>';
+                         return;
+                    }
 
-                    if (pageId == -1 || !extract) {
-                         conteudoBox.innerHTML = '<h2>'+termo+'</h2><p>Definição complexa. Clique abaixo.</p><a href="'+url+'" target="_blank" class="btn-wiki">Ver no Wikcionário &rarr;</a>';
+                    // Cria um elemento invisível para "ler" o HTML recebido
+                    var tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.parse.text['*'];
+
+                    // ESTRATÉGIA: Busca a primeira lista ordenada (<ol>) que contém as definições
+                    var primeiraDefinicao = tempDiv.querySelector('ol');
+                    
+                    if (primeiraDefinicao) {
+                        // Limpa links internos para não confundir o usuário (opcional)
+                        var links = primeiraDefinicao.querySelectorAll('a');
+                        links.forEach(l => { l.style.textDecoration = 'none'; l.style.color = '#333'; l.style.pointerEvents = 'none'; });
+
+                        conteudoBox.innerHTML = '<h2 style="color:#d32f2f; border-bottom:1px solid #eee; padding-bottom:10px;">'+termo+'</h2>' +
+                                                '<div style="font-size:1.1rem; line-height:1.6; margin-top:15px;">' + primeiraDefinicao.outerHTML + '</div>' +
+                                                '<br><a href="'+url+'" target="_blank" class="btn-wiki">Ver conjugação completa &rarr;</a>';
                     } else {
-                        // Limpa um pouco o texto cru
-                        var definicaoFormatada = extract.replace(/\n/g, '<br><br>');
-                        conteudoBox.innerHTML = '<h2 style="color:#d32f2f;">'+termo+'</h2><div style="font-style:italic; color:#555; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px;">Definição Rápida:</div><div style="font-size:0.95rem; line-height:1.5;">'+definicaoFormatada+'</div><a href="'+url+'" target="_blank" class="btn-wiki">Ver conjugação/detalhes &rarr;</a>';
+                        // Se não achar lista, mostra erro suave
+                        conteudoBox.innerHTML = '<h2>'+termo+'</h2><p>Verbete complexo. Clique abaixo para ver.</p><a href="'+url+'" target="_blank" class="btn-wiki">Ver no Wikcionário &rarr;</a>';
                     }
                 })
                 .catch(err => { conteudoBox.innerHTML = '<p>Erro ao consultar o dicionário.</p><a href="'+url+'" target="_blank" class="btn-wiki">Abrir página</a>'; });
