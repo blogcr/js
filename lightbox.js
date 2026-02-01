@@ -29,10 +29,27 @@ document.addEventListener("DOMContentLoaded", function() {
                 else if (url.includes('wiktionary.org')) { tipo = 'dicio'; }
                 else if (url.includes('youtube.com') || url.includes('youtu.be')) {
                     tipo = 'video';
+                
+                    // 1. Guarda a URL original para buscar os parâmetros de tempo
+                    var urlOriginal = url; 
+
+                    // 2. Extrai o ID do vídeo (Lógica padrão)
                     var videoId = url.split('v=')[1] || url.split('/').pop();
                     if(videoId.indexOf('&') != -1) { videoId = videoId.substring(0, videoId.indexOf('&')); }
-                    url = "https://www.youtube.com/embed/" + videoId + "?autoplay=1";
-                } 
+                
+                    // 3. NOVA LÓGICA: Resgata start e end
+                    var params = "";
+                    // Procura por 'start=' ou 't=' (tempo inicial)
+                    var matchStart = urlOriginal.match(/[?&](start|t)=([0-9]+)/);
+                    // Procura por 'end=' (tempo final)
+                    var matchEnd = urlOriginal.match(/[?&]end=([0-9]+)/);
+
+                    if (matchStart) { params += "&start=" + matchStart[2]; }
+                    if (matchEnd)   { params += "&end=" + matchEnd[1]; }
+
+                    // 4. Monta o player com o autoplay E os tempos definidos
+                    url = "https://www.youtube.com/embed/" + videoId + "?autoplay=1" + params;
+                }
                 else if (url.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) { tipo = 'imagem'; }
                 else { tipo = 'iframe'; }
             } 
